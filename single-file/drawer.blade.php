@@ -204,7 +204,7 @@
              * @return void
              */
             dragging(e) {
-                // Only drag if the drag as started
+                // Only drag if the element shouldn't be scrolled
                 if (!this.isDragging) {
                     return;
                 }
@@ -216,9 +216,21 @@
 
 
                 if (newY > this.startY) {
+                    // Apply dragging based on if the element should drag or scroll
+                    if (!this.shouldDrag(e.target, 'down')) {
+                        this.isDragging = false;
+                        return;
+                    }
+
                     // Slide the container down based on mouse/figer position
                     this.container.style.transform = `translateY(${-1 * deltaY}px)`;
                 } else {
+                    // Apply dragging based on if the element should drag or scroll
+                    if (!this.shouldDrag(e.target, 'up')) {
+                        this.isDragging = false;
+                        return;
+                    }
+
                     // Reduce the amount of drag exponentially as the user goes above the startY
                     const adjustedDeltaY = -20 * (Math.log(deltaY + 11) - 2);
                     this.container.style.transform = `translateY(${adjustedDeltaY}px)`;
@@ -254,6 +266,55 @@
                 } else {
                     // If the user is above half of the window, go back to initial position
                     this.container.style.transform = 'translateY(0)';
+                }
+            }
+
+            /**
+             * Determine if the user should be allowed to drag
+             *
+             * @param {HTMLElement} target
+             * @param {string} direction
+             *
+             * @return bool
+             */
+            shouldDrag(target, direction) {
+                this.target = target;
+                // Loop through the target all the way up to the content container
+                while (this.target && this.target !== this.content) {
+                    // Check if the element is scrollable
+                    if (this.target.scrollHeight > this.target.clientHeight) {
+                        // If you have reached the top and are trying to scroll more, drag down
+                        if (direction === 'down' && this.target.scrollTop === 0) {
+                            // Prevent all scrollable elements from overscrolling towards the top
+                            this.handleOverscroll(this.target, 'none');
+                            return true;
+                        }
+
+                        // Allow all scrollable elements to overscroll towards the bottom
+                        this.handleOverscroll(this.target, 'auto');
+
+                        return false;
+                    }
+                    // Make the parent of the target the current target
+                    this.target = this.target.parentNode;
+                }
+
+                // Default to allowing drag
+                return true;
+            }
+
+            /**
+             * Handle overscroll behavior for all scrollable elements until content container
+             *
+             * @param {HTMLElement} current
+             * @param {string} value
+             *
+             * @return void
+             */
+            handleOverscroll(current, value) {
+                while (current && current !== this.content && current.scrollHeight > current.clientHeight) {
+                    current.style.overscrollBehavior = value;
+                    current = current.parentNode;
                 }
             }
 
